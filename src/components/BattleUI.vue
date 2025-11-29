@@ -3,7 +3,14 @@
     <header class="mb-4 flex justify-between items-center">
       <h1 class="text-2xl font-bold">Battle</h1>
     </header>
-    <div class="grid grid-cols-1 gap-4">
+
+    <!-- Loading Indicator -->
+    <div v-if="typeChartStore.isLoading" class="text-center py-8">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <p class="mt-2 text-sm text-gray-600">Loading...</p>
+    </div>
+
+    <div v-else class="grid grid-cols-1 gap-4">
       <div class="relative">
         <div :class="{'battle-shake': isShaking}">
           <StatusPanel :attacking-side="attackingSide" />
@@ -31,6 +38,7 @@
 <script setup lang="ts">
 import { onMounted, watch, ref } from 'vue'
 import { useBattleStore } from '@/stores/battle'
+import { useTypeChartStore } from '@/stores/typeChart'
 import { useBattleLoop } from '@/composables/useBattleLoop'
 import { useAudio } from '@/composables/useAudio'
 import { createHowlerAudio, DEFAULT_BATTLE_SOUNDS } from '@/services/audio/howlerAudio'
@@ -39,6 +47,7 @@ import LogPanel from '@/components/LogPanel.vue'
 import MoveSelector from '@/components/MoveSelector.vue'
 
 const battleStore = useBattleStore()
+const typeChartStore = useTypeChartStore()
 const battleLoop = useBattleLoop()
 
 // Initialize audio with Howler.js adapter

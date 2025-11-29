@@ -10,11 +10,15 @@ const POKEAPI_BASE_URL = 'https://pokeapi.co/api/v2'
 const FETCH_TIMEOUT_MS = 5000
 
 /**
- * Fetch a single type from PokeAPI
+ * Fetch a single type from PokeAPI with retry logic
  * @param typeName - Pokemon type to fetch (e.g., "fire", "water")
+ * @param retryCount - Number of retry attempts remaining
  * @returns PokeAPI type response or null if failed
  */
-export async function fetchType(typeName: PokemonType): Promise<PokeAPITypeResponse | null> {
+export async function fetchType(
+  typeName: PokemonType,
+  retryCount: number = 0
+): Promise<PokeAPITypeResponse | null> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
@@ -24,6 +28,16 @@ export async function fetchType(typeName: PokemonType): Promise<PokeAPITypeRespo
     })
 
     clearTimeout(timeoutId)
+
+    // Handle rate limiting with exponential backoff
+    if (response.status === 429 && retryCount < 3) {
+      const backoffMs = Math.pow(2, retryCount) * 1000 // 1s, 2s, 4s
+      console.warn(
+        `[PokeAPI] Rate limited fetching "${typeName}", retrying in ${backoffMs}ms (attempt ${retryCount + 1}/3)`
+      )
+      await new Promise((resolve) => setTimeout(resolve, backoffMs))
+      return fetchType(typeName, retryCount + 1)
+    }
 
     if (!response.ok) {
       console.warn(`[PokeAPI] Failed to fetch type "${typeName}": ${response.status}`)

@@ -80,7 +80,7 @@ export const useTypeChartStore = defineStore('typeChart', () => {
     source,
     error,
     lastUpdated,
-    
+
     // Actions
     loadTypeChart,
     refreshTypeChart,

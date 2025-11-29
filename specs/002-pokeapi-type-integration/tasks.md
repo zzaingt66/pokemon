@@ -49,14 +49,14 @@
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implement fetchAllTypes() in src/services/typeChart/pokeApiClient.ts using Promise.allSettled() for 18 parallel type requests
-- [ ] T010 [US1] Implement saveCache() in src/services/typeChart/typeChartCache.ts with 7-day expiration calculation (fetchedAt + 604800000ms)
-- [ ] T011 [US1] Implement loadCache() in src/services/typeChart/typeChartCache.ts with JSON parsing and validation
-- [ ] T012 [US1] Implement transformPokeAPIToTypeChart() in src/services/typeChart/typeChartTransformer.ts mapping double_damage_to→2, half_damage_to→0.5, no_damage_to→0, default→1
-- [ ] T013 [US1] Implement loadTypeChart() action in src/stores/typeChart.ts with flow: check cache validity → load from cache OR fetch from API → transform → save to cache → update store state
-- [ ] T014 [US1] Update computeTypeMultiplier() in src/domain/battle/calc/typeChart.ts to read from useTypeChartStore().typeChart instead of hardcoded TYPE_CHART
-- [ ] T015 [US1] Add lazy loading trigger in battle store initialization (src/stores/battle.ts) to call typeChartStore.loadTypeChart() on first battle access
-- [ ] T016 [US1] Add isLoading state handling in battle UI components to show loading indicator while type chart loads
+- [X] T009 [US1] Implement fetchAllTypes() in src/services/typeChart/pokeApiClient.ts using Promise.allSettled() for 18 parallel type requests
+- [X] T010 [US1] Implement saveCache() in src/services/typeChart/typeChartCache.ts with 7-day expiration calculation (fetchedAt + 604800000ms)
+- [X] T011 [US1] Implement loadCache() in src/services/typeChart/typeChartCache.ts with JSON parsing and validation
+- [X] T012 [US1] Implement transformPokeAPIToTypeChart() in src/services/typeChart/typeChartTransformer.ts mapping double_damage_to→2, half_damage_to→0.5, no_damage_to→0, default→1
+- [X] T013 [US1] Implement loadTypeChart() action in src/stores/typeChart.ts with flow: check cache validity → load from cache OR fetch from API → transform → save to cache → update store state
+- [X] T014 [US1] Update computeTypeMultiplier() in src/domain/battle/calc/typeChart.ts to read from useTypeChartStore().typeChart instead of hardcoded TYPE_CHART
+- [X] T015 [US1] Add lazy loading trigger in battle store initialization (src/stores/battle.ts) to call typeChartStore.loadTypeChart() on first battle access
+- [X] T016 [US1] Add isLoading state handling in battle UI components to show loading indicator while type chart loads
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - battle fetches type data from PokeAPI, caches it, and reuses cache on reload
 
@@ -70,14 +70,14 @@
 
 ### Implementation for User Story 2
 
-- [ ] T017 [P] [US2] Add timeout handling in src/services/typeChart/pokeApiClient.ts using AbortController.abort() after 5 seconds
-- [ ] T018 [P] [US2] Add retry logic with exponential backoff in src/services/typeChart/pokeApiClient.ts for 429 rate limit responses
-- [ ] T019 [US2] Implement isCacheValid() in src/services/typeChart/typeChartCache.ts checking version, schema, and expiration
-- [ ] T020 [US2] Add try-catch error handling in src/services/typeChart/typeChartService.ts for all API/cache/transform operations
-- [ ] T021 [US2] Implement fallback logic in src/services/typeChart/typeChartService.ts: if any operation fails, import and return hardcoded TYPE_CHART from src/data/typeChart.ts
-- [ ] T022 [US2] Update loadTypeChart() in src/stores/typeChart.ts to set source='fallback' and log warning when using hardcoded data
-- [ ] T023 [US2] Add error state management in src/stores/typeChart.ts with error message for debugging (not shown to user)
-- [ ] T024 [US2] Verify battle initialization does not block or show errors when API is unavailable
+- [X] T017 [P] [US2] Add timeout handling in src/services/typeChart/pokeApiClient.ts using AbortController.abort() after 5 seconds
+- [X] T018 [P] [US2] Add retry logic with exponential backoff in src/services/typeChart/pokeApiClient.ts for 429 rate limit responses
+- [X] T019 [US2] Implement isCacheValid() in src/services/typeChart/typeChartCache.ts checking version, schema, and expiration
+- [X] T020 [US2] Add try-catch error handling in src/services/typeChart/typeChartService.ts for all API/cache/transform operations
+- [X] T021 [US2] Implement fallback logic in src/services/typeChart/typeChartService.ts: if any operation fails, import and return hardcoded TYPE_CHART from src/data/typeChart.ts
+- [X] T022 [US2] Update loadTypeChart() in src/stores/typeChart.ts to set source='fallback' and log warning when using hardcoded data
+- [X] T023 [US2] Add error state management in src/stores/typeChart.ts with error message for debugging (not shown to user)
+- [X] T024 [US2] Verify battle initialization does not block or show errors when API is unavailable
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work - battle fetches from API when available, falls back to hardcoded data when not
 
@@ -91,12 +91,12 @@
 
 ### Implementation for User Story 3
 
-- [ ] T025 [P] [US3] Create validatePokemonType() function in src/services/typeChart/typeChartService.ts checking if type exists in loaded type chart
-- [ ] T026 [P] [US3] Create isValidTypeChart() function in src/services/typeChart/typeChartCache.ts verifying all 18 POKEMON_TYPES exist as keys
-- [ ] T027 [US3] Add type validation in battle store (src/stores/battle.ts) when Pokemon are loaded, calling validatePokemonType() for each Pokemon's types
-- [ ] T028 [US3] Add validation warning logging in src/stores/battle.ts when invalid type detected (console.warn with type name and Pokemon name)
-- [ ] T029 [US3] Implement fallback-per-type logic in src/domain/battle/calc/typeChart.ts: if type missing from chart, use hardcoded TYPE_CHART for that specific calculation
-- [ ] T030 [US3] Add schema validation in src/services/typeChart/typeChartCache.ts: verify cache has correct structure before using (version, typeChart, fetchedAt, expiresAt, source fields)
+- [X] T025 [P] [US3] Create validatePokemonType() function in src/services/typeChart/typeChartService.ts checking if type exists in loaded type chart
+- [X] T026 [P] [US3] Create isValidTypeChart() function in src/services/typeChart/typeChartCache.ts verifying all 18 POKEMON_TYPES exist as keys
+- [X] T027 [US3] Add type validation in battle store (src/stores/battle.ts) when Pokemon are loaded, calling validatePokemonType() for each Pokemon's types
+- [X] T028 [US3] Add validation warning logging in src/stores/battle.ts when invalid type detected (console.warn with type name and Pokemon name)
+- [X] T029 [US3] Implement fallback-per-type logic in src/domain/battle/calc/typeChart.ts: if type missing from chart, use hardcoded TYPE_CHART for that specific calculation
+- [X] T030 [US3] Add schema validation in src/services/typeChart/typeChartCache.ts: verify cache has correct structure before using (version, typeChart, fetchedAt, expiresAt, source fields)
 
 **Checkpoint**: All user stories should now be independently functional - type data loads from API, falls back gracefully, and validates data integrity
 
@@ -106,16 +106,16 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T031 [P] Add console.log statements in src/services/typeChart/typeChartService.ts indicating data source: "Type chart loaded from: [api|cache|fallback]"
-- [ ] T032 [P] Add TSDoc comments to all public functions in src/services/typeChart/ files
-- [ ] T033 [P] Handle localStorage quota exceeded error in src/services/typeChart/typeChartCache.ts (catch and skip cache save, use fallback)
-- [ ] T034 Add devtools debugging helper in src/stores/typeChart.ts exposing store state (source, lastUpdated, isLoading) for inspection
-- [ ] T035 Update quickstart.md with actual usage examples matching implemented API
-- [ ] T036 Verify bundle size increase is <10KB gzipped by running `npm run build` and comparing dist/ size
-- [ ] T037 [P] Add runtime type guard isPokeAPITypeResponse() validation before transforming API responses in src/services/typeChart/typeChartTransformer.ts
-- [ ] T038 Test cache expiration by manually setting expiresAt to past date in localStorage, verify fresh fetch occurs
-- [ ] T039 Verify all existing battle tests still pass with new store-based type chart system
-- [ ] T040 Run quickstart.md validation scenarios (basic usage, cache refresh, error handling)
+- [X] T031 [P] Add console.log statements in src/services/typeChart/typeChartService.ts indicating data source: "Type chart loaded from: [api|cache|fallback]"
+- [X] T032 [P] Add TSDoc comments to all public functions in src/services/typeChart/ files
+- [X] T033 [P] Handle localStorage quota exceeded error in src/services/typeChart/typeChartCache.ts (catch and skip cache save, use fallback)
+- [X] T034 Add devtools debugging helper in src/stores/typeChart.ts exposing store state (source, lastUpdated, isLoading) for inspection
+- [X] T035 Update quickstart.md with actual usage examples matching implemented API
+- [X] T036 Verify bundle size increase is <10KB gzipped by running `npm run build` and comparing dist/ size
+- [X] T037 [P] Add runtime type guard isPokeAPITypeResponse() validation before transforming API responses in src/services/typeChart/typeChartTransformer.ts
+- [X] T038 Test cache expiration by manually setting expiresAt to past date in localStorage, verify fresh fetch occurs
+- [X] T039 Verify all existing battle tests still pass with new store-based type chart system
+- [X] T040 Run quickstart.md validation scenarios (basic usage, cache refresh, error handling)
 
 ---
 

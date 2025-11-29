@@ -5,17 +5,31 @@
 
 import type { FetchTypeChartResult, TypeEffectivenessMap } from './types'
 import { fetchAllTypes } from './pokeApiClient'
-import { loadCache, saveCache, isCacheValid } from './typeChartCache'
+import { loadCache, saveCache, isCacheValid, isValidTypeChart } from './typeChartCache'
 import { transformPokeAPIToTypeChart } from './typeChartTransformer'
 import { TYPE_CHART } from '@/data/typeChart'
 import { POKEMON_TYPES } from './types'
+
+/**
+ * Validate that a Pokemon type exists in the loaded type chart
+ * @param typeName - Pokemon type to validate (lowercase)
+ * @param typeChart - Type chart to check against
+ * @returns True if type exists in chart
+ */
+export function validatePokemonType(
+  typeName: string,
+  typeChart: TypeEffectivenessMap
+): boolean {
+  const capitalizedType = typeName.charAt(0).toUpperCase() + typeName.slice(1)
+  return capitalizedType in typeChart
+}
 
 /**
  * Load type chart with automatic fallback chain:
  * 1. Try loading from valid cache
  * 2. Try fetching fresh data from PokeAPI
  * 3. Fall back to hardcoded TYPE_CHART
- * 
+ *
  * @returns Result containing type chart data and source indicator
  */
 export async function loadTypeChart(): Promise<FetchTypeChartResult> {
@@ -24,7 +38,7 @@ export async function loadTypeChart(): Promise<FetchTypeChartResult> {
   const validation = isCacheValid(cached)
 
   if (validation.isValid && validation.cache) {
-    console.log('[TypeChartService] Using cached type chart')
+    console.log('[TypeChartService] Type chart loaded from: cache')
     return {
       success: true,
       data: validation.cache.typeChart,
@@ -43,15 +57,20 @@ export async function loadTypeChart(): Promise<FetchTypeChartResult> {
     // Verify we got all 18 types (all-or-nothing strategy)
     if (types.length === POKEMON_TYPES.length) {
       const typeChart = transformPokeAPIToTypeChart(types)
-      
-      // Save to cache
-      saveCache(typeChart, 'api')
 
-      console.log('[TypeChartService] Successfully loaded type chart from PokeAPI')
-      return {
-        success: true,
-        data: typeChart,
-        source: 'api',
+      // Validate type chart completeness
+      if (!isValidTypeChart(typeChart)) {
+        console.warn('[TypeChartService] Incomplete type chart from API, using fallback')
+      } else {
+        // Save to cache
+        saveCache(typeChart, 'api')
+
+        console.log('[TypeChartService] Type chart loaded from: api')
+        return {
+          success: true,
+          data: typeChart,
+          source: 'api',
+        }
       }
     } else {
       console.warn(
@@ -60,10 +79,8 @@ export async function loadTypeChart(): Promise<FetchTypeChartResult> {
     }
   } catch (error) {
     console.warn('[TypeChartService] Error fetching from PokeAPI:', error)
-  }
-
-  // Fall back to hardcoded TYPE_CHART
-  console.log('[TypeChartService] Using hardcoded TYPE_CHART as fallback')
+  }  // Fall back to hardcoded TYPE_CHART
+  console.log('[TypeChartService] Type chart loaded from: fallback')
   return {
     success: true,
     data: TYPE_CHART,

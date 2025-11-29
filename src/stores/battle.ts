@@ -9,6 +9,18 @@ import { computeTypeMultiplier } from '@/domain/battle/calc/typeChart'
 import { calculateDamage } from '@/domain/battle/calc/damage'
 import { SAMPLE_PLAYER, SAMPLE_NPC } from '@/data/pokemon'
 import { useTypeChartStore } from './typeChart'
+import { validatePokemonType } from '@/services/typeChart/typeChartService'
+
+/**
+ * Validate all types in a Pokemon
+ */
+function validatePokemonTypes(pokemon: Pokemon, typeChart: Record<string, Record<string, number>>): void {
+  for (const type of pokemon.types) {
+    if (type && !validatePokemonType(type, typeChart)) {
+      console.warn(`[BattleStore] Invalid type "${type}" found in ${pokemon.name}, using fallback data`)
+    }
+  }
+}
 
 export const useBattleStore = defineStore('battle', {
   state: (): BattleState & { seed?: string | number; ai: AI } => ({
@@ -37,6 +49,10 @@ export const useBattleStore = defineStore('battle', {
       // Deep clone to ensure we have fresh Pokemon with full HP
       const playerClone = structuredClone(SAMPLE_PLAYER)
       const npcClone = structuredClone(SAMPLE_NPC)
+
+      // Validate Pokemon types
+      validatePokemonTypes(playerClone, typeChartStore.typeChart)
+      validatePokemonTypes(npcClone, typeChartStore.typeChart)
 
       // Reset HP to max (in case objects were mutated)
       playerClone.currentHp = playerClone.stats.hp

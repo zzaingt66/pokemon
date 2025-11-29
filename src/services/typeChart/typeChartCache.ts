@@ -4,6 +4,7 @@
  */
 
 import type { TypeChartCache, CacheValidationResult, TypeEffectivenessMap } from './types'
+import { POKEMON_TYPES } from './types'
 
 const CACHE_KEY = 'pokemon-type-chart-v1'
 const CACHE_VERSION = '1.0.0'
@@ -48,7 +49,12 @@ export function saveCache(typeChart: TypeEffectivenessMap, source: 'api' | 'fall
 
     localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
   } catch (error) {
-    console.warn('[TypeChartCache] Failed to save cache:', error)
+    // Handle quota exceeded gracefully
+    if (error instanceof Error && error.name === 'QuotaExceededError') {
+      console.warn('[TypeChartCache] localStorage quota exceeded, skipping cache save')
+    } else {
+      console.warn('[TypeChartCache] Failed to save cache:', error)
+    }
   }
 }
 
@@ -67,6 +73,11 @@ export function isCacheValid(cache: TypeChartCache | null): CacheValidationResul
     return { isValid: false, reason: 'version-mismatch', cache }
   }
 
+  // Check required fields exist
+  if (!cache.fetchedAt || !cache.expiresAt || !cache.source) {
+    return { isValid: false, reason: 'corrupted', cache }
+  }
+
   // Check expiration
   const now = new Date()
   const expiresAt = new Date(cache.expiresAt)
@@ -81,6 +92,23 @@ export function isCacheValid(cache: TypeChartCache | null): CacheValidationResul
   }
 
   return { isValid: true, cache }
+}
+
+/**
+ * Validate that type chart has all 18 Pokemon types
+ * @param typeChart - Type chart to validate
+ * @returns True if all types are present
+ */
+export function isValidTypeChart(typeChart: TypeEffectivenessMap): boolean {
+  // Check that all 18 types exist as keys (capitalized)
+  for (const type of POKEMON_TYPES) {
+    const capitalizedType = type.charAt(0).toUpperCase() + type.slice(1)
+    if (!(capitalizedType in typeChart)) {
+      console.warn(`[TypeChartCache] Missing type in chart: ${capitalizedType}`)
+      return false
+    }
+  }
+  return true
 }
 
 /**

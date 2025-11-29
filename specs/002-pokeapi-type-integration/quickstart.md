@@ -50,6 +50,11 @@ console.log(`Type chart loaded from: ${typeChartStore.source}`)
 
 // Check last update time
 console.log(`Last updated: ${typeChartStore.lastUpdated}`)
+
+// Check for errors
+if (typeChartStore.error) {
+  console.error('Type chart error:', typeChartStore.error)
+}
 ```
 
 ### Reactive Type Chart Access
