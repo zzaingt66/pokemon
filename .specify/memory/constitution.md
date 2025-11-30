@@ -1,22 +1,23 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version: 1.0.0 → 1.1.0
-Change Type: MINOR - Added new UI design principle
+Version: 1.1.0 → 1.2.0
+Change Type: MINOR - Added shadcn-vue component library to approved stack
 
 Modified Principles:
-- None
+- VI. UI/UX Design System - Enhanced with shadcn-vue component library requirement
 
 Added Sections:
-- Core Principles: VI. UI/UX Design System (Glassomorphism & Neumorphism)
+- Architecture & Tech Stack: Added shadcn-vue to Approved Libraries
+- Architecture & Tech Stack: Added UI Component Library section
 
 Removed Sections:
 - None
 
 Templates Status:
-✅ plan-template.md - No updates required (no UI-specific gates needed)
+✅ plan-template.md - No updates required (component library usage covered by constitution)
 ✅ spec-template.md - No updates required (UI requirements captured in FR)
-✅ tasks-template.md - No updates required (UI tasks follow from spec)
+✅ tasks-template.md - No updates required (component tasks follow from spec)
 ✅ Constitution updated
 
 Follow-up TODOs:
@@ -113,14 +114,16 @@ Accessibility requirements (NON-NEGOTIABLE):
 ### VI. UI/UX Design System
 
 All user interfaces MUST follow a modern, minimalist design language using Tailwind CSS with glassomorphism and neumorphism aesthetics:
+- Use shadcn-vue components as the foundation for all UI elements (buttons, inputs, dialogs, etc.)
 - Use Tailwind utility classes for all styling (NO custom CSS except when absolutely necessary)
 - Apply glassy, translucent backgrounds with backdrop blur effects (`backdrop-blur-*`, `bg-opacity-*`)
 - Implement soft neumorphic shadows for depth and tactile feel (`shadow-*` with subtle inset effects)
 - Maintain visual simplicity: clean layouts, generous whitespace, subtle animations
 - Color palette: soft, muted tones with high-contrast accents for interactive elements
 - Responsive by default: mobile-first approach using Tailwind breakpoints (`sm:`, `md:`, `lg:`, etc.)
+- All shadcn-vue components MUST be customized to align with glassomorphism/neumorphism aesthetic
 
-**Rationale**: Consistent, modern design language creates professional user experience while Tailwind ensures maintainability and rapid iteration. Glassomorphism/neumorphism provide visual appeal without complexity.
+**Rationale**: Consistent, modern design language creates professional user experience while Tailwind ensures maintainability and rapid iteration. Glassomorphism/neumorphism provide visual appeal without complexity. shadcn-vue provides accessible, type-safe components that can be customized to match our design system.
 
 ## Architecture & Tech Stack
 
@@ -131,12 +134,25 @@ All user interfaces MUST follow a modern, minimalist design language using Tailw
 - **State Management**: Pinia 3+
 - **Routing**: Vue Router 4+
 - **Styling**: Tailwind CSS 3+ with JIT mode
+- **UI Components**: shadcn-vue (with Radix Vue primitives)
 - **Linting**: ESLint 9+ with Vue/TypeScript configs
 - **Formatting**: Prettier 3.6+
+
+**UI Component Library** (shadcn-vue configuration):
+- Style: New York (recommended)
+- Base color: Neutral
+- CSS variables: Enabled
+- Components path: `@/components/ui`
+- Utils path: `@/lib/utils`
+- All components MUST be added via `npx shadcn-vue@latest add <component>`
+- Direct modification of shadcn-vue components is ALLOWED to match design system
 
 **Approved Libraries** (additions require discussion):
 - Vue DevTools for development
 - Type utilities as needed
+- Radix Vue (headless UI primitives, required by shadcn-vue)
+- class-variance-authority (for component variants)
+- clsx & tailwind-merge (for className utilities)
 
 **Forbidden**:
 - Options API (use Composition API)
@@ -151,11 +167,14 @@ All user interfaces MUST follow a modern, minimalist design language using Tailw
 **File Structure**:
 ```
 src/
-  components/     # Reusable UI components
+  components/
+    ui/           # shadcn-vue components (auto-generated)
+    [feature]/    # Feature-specific components (e.g., teamBuilder/)
   views/          # Route-level components
   stores/         # Pinia state stores
   models/         # TypeScript interfaces/types
   services/       # API/external integrations
+  lib/            # Shared utilities (cn helper, etc.)
   utils/          # Pure utility functions
   router/         # Route definitions
 ```
@@ -254,4 +273,4 @@ MUST pass before merge:
 
 ---
 
-**Version**: 1.1.0 | **Ratified**: 2025-11-28 | **Last Amended**: 2025-11-30
+**Version**: 1.2.0 | **Ratified**: 2025-11-28 | **Last Amended**: 2025-11-30
