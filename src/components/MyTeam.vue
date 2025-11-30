@@ -3,22 +3,22 @@ import { useTeamStore } from '@/stores/team'
 import { storeToRefs } from 'pinia'
 
 const teamStore = useTeamStore()
-const { pokemons } = storeToRefs(teamStore)
+const { newTeam } = storeToRefs(teamStore)
 </script>
 
 <template>
   <div class="team-container">
     <h2 class="title">My Pokémon Team</h2>
-    <div v-if="pokemons.length === 0" class="empty-team">
+    <div v-if="newTeam.length === 0" class="empty-team">
       <p>You have no Pokémon in your team.</p>
     </div>
     <div v-else class="pokemon-list">
-      <div v-for="pokemon in pokemons" :key="pokemon.id" class="pokemon-card">
-        <h3>{{ pokemon.name }}</h3>
+      <div v-for="member in newTeam" :key="member.pokemon.id" class="pokemon-card">
+        <h3>{{ member.pokemon.name }}</h3>
         <div class="stats">
-          <p><strong>HP:</strong> {{ pokemon.hp }}</p>
-          <p><strong>Attack:</strong> {{ pokemon.attack }}</p>
-          <p><strong>Defense:</strong> {{ pokemon.defense }}</p>
+          <p><strong>HP:</strong> {{ member.pokemon.stats.hp }}</p>
+          <p><strong>Attack:</strong> {{ member.pokemon.stats.attack }}</p>
+          <p><strong>Defense:</strong> {{ member.pokemon.stats.defense }}</p>
         </div>
       </div>
     </div>

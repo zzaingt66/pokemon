@@ -86,4 +86,37 @@ const lastCriticalMessage = computed(() => {
   white-space: nowrap;
   border-width: 0;
 }
+/* AGREGADO: Scroll para battle-style */
+.log-panel.battle-style {
+  background: oklch(var(--color-card));
+  border: 3px solid oklch(var(--color-border));
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+  min-height: auto;
+  max-height: 108px; /* ALTURA MÁXIMA */
+  overflow-y: auto; /* SCROLL ACTIVADO */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Custom scrollbar para battle-style */
+.log-panel.battle-style::-webkit-scrollbar {
+  width: 4px;
+}
+
+.log-panel.battle-style::-webkit-scrollbar-track {
+  background: oklch(var(--color-muted));
+  border-radius: 2px;
+}
+
+.log-panel.battle-style::-webkit-scrollbar-thumb {
+  background: oklch(var(--color-border));
+  border-radius: 2px;
+}
+
+.log-panel.battle-style::-webkit-scrollbar-thumb:hover {
+  background: oklch(var(--color-muted-foreground));
+}
 </style>
