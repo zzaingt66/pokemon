@@ -20,35 +20,38 @@ const emit = defineEmits<Emits>()
 
 const currentPage = ref(1)
 const pageSize = 20
-const pokemonList = ref<Pokemon[]>([])
+const allPokemon = ref<Pokemon[]>([])
 const searchQuery = ref('')
-const totalCount = ref(1025) // PokeAPI has 1025 Pokemon (Gen 1-9)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-const totalPages = computed(() => Math.ceil(totalCount.value / pageSize))
-const offset = computed(() => (currentPage.value - 1) * pageSize)
-
 const filteredPokemonList = computed(() => {
   if (!searchQuery.value.trim()) {
-    return pokemonList.value
+    return allPokemon.value
   }
 
   const query = searchQuery.value.toLowerCase().trim()
-  return pokemonList.value.filter(pokemon =>
+  return allPokemon.value.filter(pokemon =>
     pokemon.name.toLowerCase().includes(query) ||
     pokemon.types.some(type => type.toLowerCase().includes(query))
   )
 })
 
-async function loadPokemon() {
+const paginatedPokemonList = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  const end = start + pageSize
+  return filteredPokemonList.value.slice(start, end)
+})
+
+const totalPages = computed(() => Math.ceil(filteredPokemonList.value.length / pageSize))
+
+async function loadAllPokemon() {
   loading.value = true
   error.value = null
 
   try {
-    // Fetch paginated list (names + URLs only)
-    const listResponse = await fetchPokemonList(pageSize, offset.value)
-    totalCount.value = listResponse.count
+    // Fetch complete list (all Pokemon at once)
+    const listResponse = await fetchPokemonList(1025, 0)
 
     // Extract IDs from URLs
     const ids = listResponse.results.map((item) => {
@@ -56,11 +59,21 @@ async function loadPokemon() {
       return match && match[1] ? parseInt(match[1], 10) : 0
     }).filter((id) => id > 0)
 
-    // Batch fetch full Pokemon data
-    const results = await fetchPokemonBatch(ids)
-    pokemonList.value = results.filter((p): p is Pokemon => p !== null)
+    console.log(`[PokemonCatalog] Fetching ${ids.length} Pokemon...`)
 
-    console.log(`[PokemonCatalog] Loaded ${pokemonList.value.length} Pokemon for page ${currentPage.value}`)
+    // Batch fetch all Pokemon data in chunks of 50
+    const chunkSize = 50
+    const chunks: Pokemon[] = []
+
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      const chunkIds = ids.slice(i, i + chunkSize)
+      const results = await fetchPokemonBatch(chunkIds)
+      chunks.push(...results.filter((p): p is Pokemon => p !== null))
+      console.log(`[PokemonCatalog] Loaded ${chunks.length}/${ids.length} Pokemon`)
+    }
+
+    allPokemon.value = chunks
+    console.log(`[PokemonCatalog] All Pokemon loaded: ${allPokemon.value.length}`)
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Failed to load Pokemon'
     error.value = errorMessage
@@ -73,7 +86,6 @@ async function loadPokemon() {
 function nextPage() {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
-    loadPokemon()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 }
@@ -81,13 +93,12 @@ function nextPage() {
 function prevPage() {
   if (currentPage.value > 1) {
     currentPage.value--
-    loadPokemon()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 }
 
 function retry() {
-  loadPokemon()
+  loadAllPokemon()
 }
 
 function handlePokemonClick(pokemon: Pokemon) {
@@ -96,7 +107,7 @@ function handlePokemonClick(pokemon: Pokemon) {
 }
 
 onMounted(() => {
-  loadPokemon()
+  loadAllPokemon()
 })
 </script>
 
@@ -148,7 +159,7 @@ onMounted(() => {
     <!-- Pokemon grid -->
     <div v-else class="pokemon-grid">
       <div
-        v-for="pokemon in filteredPokemonList"
+        v-for="pokemon in paginatedPokemonList"
         :key="pokemon.id"
         @click="handlePokemonClick(pokemon)"
         class="pokemon-card-wrapper"

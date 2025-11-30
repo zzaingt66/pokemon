@@ -198,6 +198,7 @@ graph TD
 ```
 
 **Completion Order for MVP**:
+
 1. Phase 1: Setup (T001-T003)
 2. Phase 2: Foundation (T004-T011) ⚠️ BLOCKING
 3. Phase 3: User Story 1 - Browse Pokemon (T012-T021) ✅ MVP
@@ -214,26 +215,32 @@ graph TD
 
 ## Parallel Execution Opportunities
 
-### Phase 2 Foundation (ALL can run in parallel):
+### Phase 2 Foundation (ALL can run in parallel)
+
 - T004-T009: All service files independent (pokemonService, moveService, teamCache, index.ts)
 - T010-T011: Team store independent of services (uses types from T002-T003)
 
-### Phase 3 User Story 1 (some parallel):
+### Phase 3 User Story 1 (some parallel)
+
 - T012-T013: Components independent (PokemonCard, PokemonCatalog)
 - T019-T021: View and routing tasks after components complete
 
-### Phase 4 User Story 2 (some parallel):
+### Phase 4 User Story 2 (some parallel)
+
 - T022-T023: Components independent (MoveCard, MoveSelector)
 - T024: Service function independent of components
 
-### Phase 5 User Story 3 (some parallel):
+### Phase 5 User Story 3 (some parallel)
+
 - T032-T033: Components independent (TeamMemberCard, TeamRoster)
 
-### Phase 6 User Story 4 (some parallel):
+### Phase 6 User Story 4 (some parallel)
+
 - T045: Utility function independent
 - T046-T049: Battle store modifications sequential
 
-### Phase 7 Polish (ALL can run in parallel):
+### Phase 7 Polish (ALL can run in parallel)
+
 - T056-T063: All polish tasks independent (caching, docs, accessibility)
 
 **Estimated Total Time**: ~11-13 hours for full feature (MVP: ~6-7 hours)
@@ -243,6 +250,7 @@ graph TD
 ## Task Summary
 
 **Total Tasks**: 90
+
 - Phase 1 Setup: 3 tasks
 - Phase 2 Foundation: 8 tasks (BLOCKING)
 - Phase 3 User Story 1 (P1 MVP): 10 tasks
@@ -255,6 +263,7 @@ graph TD
 **MVP Tasks**: 32 (Phases 1, 2, 3, 6)
 **Parallelizable Tasks**: 28 marked with [P]
 **User Story Distribution**:
+
 - US1 (Browse Pokemon): 10 tasks
 - US2 (Select Moves): 10 tasks
 - US3 (Build Team): 13 tasks

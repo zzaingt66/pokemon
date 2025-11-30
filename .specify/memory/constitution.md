@@ -1,26 +1,26 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version: 0.0.0 → 1.0.0
-Change Type: MAJOR - Initial constitution ratification
+Version: 1.0.0 → 1.1.0
+Change Type: MINOR - Added new UI design principle
 
 Modified Principles:
-- Initial creation of all core principles
+- None
 
 Added Sections:
-- Core Principles (Component-First, Type Safety, State Management, Testing Culture, Performance & Accessibility)
-- Architecture & Tech Stack
-- Development Workflow
-- Governance
+- Core Principles: VI. UI/UX Design System (Glassomorphism & Neumorphism)
+
+Removed Sections:
+- None
 
 Templates Status:
-✅ Constitution created (initial version)
-⚠ Templates require review: plan-template.md, spec-template.md, tasks-template.md
+✅ plan-template.md - No updates required (no UI-specific gates needed)
+✅ spec-template.md - No updates required (UI requirements captured in FR)
+✅ tasks-template.md - No updates required (UI tasks follow from spec)
+✅ Constitution updated
 
 Follow-up TODOs:
-- Validate template alignment after initial usage
-- Establish CI/CD pipeline configuration
-- Define security scanning integration
+- None (all templates remain aligned)
 -->
 
 # Pokémon MMO Constitution
@@ -110,6 +110,18 @@ Accessibility requirements (NON-NEGOTIABLE):
 
 **Rationale**: Performance = user retention; accessibility = inclusive design and legal compliance.
 
+### VI. UI/UX Design System
+
+All user interfaces MUST follow a modern, minimalist design language using Tailwind CSS with glassomorphism and neumorphism aesthetics:
+- Use Tailwind utility classes for all styling (NO custom CSS except when absolutely necessary)
+- Apply glassy, translucent backgrounds with backdrop blur effects (`backdrop-blur-*`, `bg-opacity-*`)
+- Implement soft neumorphic shadows for depth and tactile feel (`shadow-*` with subtle inset effects)
+- Maintain visual simplicity: clean layouts, generous whitespace, subtle animations
+- Color palette: soft, muted tones with high-contrast accents for interactive elements
+- Responsive by default: mobile-first approach using Tailwind breakpoints (`sm:`, `md:`, `lg:`, etc.)
+
+**Rationale**: Consistent, modern design language creates professional user experience while Tailwind ensures maintainability and rapid iteration. Glassomorphism/neumorphism provide visual appeal without complexity.
+
 ## Architecture & Tech Stack
 
 **Core Stack** (changes require constitutional amendment):
@@ -118,6 +130,7 @@ Accessibility requirements (NON-NEGOTIABLE):
 - **Language**: TypeScript 5.9+ (strict mode)
 - **State Management**: Pinia 3+
 - **Routing**: Vue Router 4+
+- **Styling**: Tailwind CSS 3+ with JIT mode
 - **Linting**: ESLint 9+ with Vue/TypeScript configs
 - **Formatting**: Prettier 3.6+
 
@@ -156,7 +169,8 @@ src/
 **Style Guidelines**:
 - Use `<script setup lang="ts">` syntax
 - Order: template → script → style
-- Scoped styles only (`<style scoped>`)
+- Scoped styles only (`<style scoped>`) - prefer Tailwind utilities over custom styles
+- Tailwind classes preferred: use utility-first approach, avoid `@apply` unless absolutely necessary
 - ESLint/Prettier enforced (run `npm run lint` before commit)
 - Max file length: 300 lines (split if exceeded)
 
@@ -240,4 +254,4 @@ MUST pass before merge:
 
 ---
 
-**Version**: 1.0.0 | **Ratified**: 2025-11-28 | **Last Amended**: 2025-11-28
+**Version**: 1.1.0 | **Ratified**: 2025-11-28 | **Last Amended**: 2025-11-30
