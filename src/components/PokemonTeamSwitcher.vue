@@ -56,7 +56,7 @@ defineEmits<Emits>()
                   class="hp-bar"
                   :style="{
                     width: (pokemon.currentHp / pokemon.stats.hp) * 100 + '%',
-                    backgroundColor: 
+                    backgroundColor:
                       pokemon.currentHp / pokemon.stats.hp > 0.5
                         ? '#10b981'
                         : pokemon.currentHp / pokemon.stats.hp > 0.25
