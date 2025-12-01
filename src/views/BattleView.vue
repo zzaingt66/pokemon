@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import BattleUI from '@/components/BattleScreen.vue'
+import BattleScreen from '@/components/BattleScreen.vue'
 </script>
 
 <template>
-  <BattleUI />
+  <BattleScreen />
 </template>

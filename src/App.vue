@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import 'primeicons/primeicons.css'
+import { RouterView } from 'vue-router'
+
 </script>
 
 <template>
@@ -8,9 +10,6 @@ import 'primeicons/primeicons.css'
   </div>
 </template>
 
-<script setup lang="ts">
-import { RouterView } from 'vue-router'
-</script>
 
 <style scoped>
 #app {
