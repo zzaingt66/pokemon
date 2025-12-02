@@ -1,5 +1,42 @@
 <script setup lang="ts">
+/**
+ * BattleScreen - Battle System Orchestrator
+ * Feature: 005-battle-fixes-status-moves
+ *
+ * This component serves as the main orchestrator for the battle system,
+ * coordinating between modular child components:
+ *
+ * ## Child Components (T016-T019 verified)
+ *
+ * - **BattleField.vue** - Visual battlefield rendering
+ *   Props: playerPokemon, npcPokemon, playerSprite, enemySprite, playerHpPercent,
+ *          enemyHpPercent, shakeEffect, isTrainerBattle, rivalRemainingPokemon, npcTeamLength
+ *
+ * - **BattleActionMenu.vue** - Control panel (Fight/Bag/Pokemon/Run + MoveSelector)
+ *   Props: currentView, logMessages, playerMoves, isAttacking
+ *   Events: @fight, @bag, @pokemon, @run, @select-move, @back
+ *
+ * - **BagScreen.vue** - Items display and usage
+ *   Events: @use-item, @back
+ *
+ * - **BattleTeamSelector.vue** - Pokemon team selection for switching
+ *   Props: team, currentPokemonId, trainerName
+ *   Events: @switch-pokemon, @back
+ *
+ * - **PokemonTeamSwitcher.vue** - Enhanced team switcher with sprites
+ *   Props: team, currentPokemonId, trainerName, isEnemyTeam?
+ *   Events: @select
+ *
+ * ## Key Responsibilities
+ * - Initialize battle from Team Builder or props
+ * - Load team from localStorage on mount (T007 fix)
+ * - Manage view state transitions
+ * - Handle all child component events
+ * - Coordinate audio and visual effects
+ * - Detect faint/switch scenarios
+ */
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import BattleTeamSelector from './battle/BattleTeamSelector.vue'
 import PokemonTeamSwitcher from './battle/PokemonTeamSwitcher.vue'
 import TrainerWaitingScreen from './TrainerWaitingScreen.vue'
@@ -32,6 +69,7 @@ const props = defineProps<Props>()
 // Stores
 const battleStore = useBattleStore()
 const teamStore = useTeamStore()
+const router = useRouter()
 const { rivalRemainingPokemon, startBattle: startTrainerBattle } = useTrainerBattle()
 
 // Convert Team Builder Pokemon to Battle Engine format (T027)
@@ -115,6 +153,7 @@ const waitingTrainer = ref<TrainerData | null>(null)
 const waitingForTrainerSwitch = ref(false)
 const isAttacking = ref(false)
 const isBattleReady = ref(false) // Track if battle is fully initialized
+const battleError = ref<string | null>(null) // T008: Track battle initialization errors
 
 // Watch para sonidos sincronizados
 watch(
@@ -283,16 +322,26 @@ const handleBack = () => {
   currentView.value = 'main'
 }
 
+// T008: Navigate to Team Builder when no team available
+const goToTeamBuilder = () => {
+  router.push('/team-builder')
+}
+
 // Inicializar batalla
 onMounted(async () => {
+  // CRITICAL FIX (T007): Load team from localStorage BEFORE accessing roster
+  // This ensures teamStore.roster is populated before getPlayerTeam computed runs
+  teamStore.loadTeam()
+
   // FR-002: Load team from localStorage before battle initialization
   // T027: Use team from Team Builder if available, otherwise use props or fallback
   // FR-003: Validate team before using
   const team = props.playerTeam || getPlayerTeam.value
 
-  // Final validation
+  // Final validation (T008: User-friendly error handling)
   if (!team || team.length === 0) {
-    console.error('[BattleScreen]  CRITICAL: No valid team available!')
+    console.error('[BattleScreen] CRITICAL: No valid team available!')
+    battleError.value = '¡No tienes un equipo Pokémon! Ve al Team Builder para crear tu equipo.'
     return
   }
 
@@ -351,7 +400,19 @@ watch(() => battleStore.log, () => {
 
 <template>
   <div class="battle-container">
-    <div class="battle-screen">
+    <!-- T008: Error state when no team available -->
+    <div v-if="battleError" class="error-screen">
+      <div class="error-content">
+        <div class="error-icon">⚠️</div>
+        <h2 class="error-title">¡Error!</h2>
+        <p class="error-message">{{ battleError }}</p>
+        <button class="error-button" @click="goToTeamBuilder">
+          Ir al Team Builder
+        </button>
+      </div>
+    </div>
+
+    <div v-else class="battle-screen">
       <!-- Campo de batalla -->
       <BattleField
         :player-pokemon="battleStore.player"
@@ -478,6 +539,67 @@ watch(() => battleStore.log, () => {
 
   .control-area-wrapper {
     height: 200px;
+  }
+}
+
+/* T008: Error screen styles */
+.error-screen {
+  width: 720px;
+  height: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(var(--color-card));
+  border: 4px solid oklch(var(--color-border));
+  border-radius: 8px;
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+}
+
+.error-content {
+  text-align: center;
+  padding: 40px;
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.error-title {
+  font-size: 18px;
+  color: oklch(var(--color-destructive));
+  margin-bottom: 16px;
+}
+
+.error-message {
+  font-size: 10px;
+  color: oklch(var(--color-foreground));
+  line-height: 1.6;
+  margin-bottom: 24px;
+  max-width: 400px;
+}
+
+.error-button {
+  background: oklch(var(--color-primary));
+  color: oklch(var(--color-primary-foreground));
+  border: none;
+  border-radius: 4px;
+  padding: 12px 24px;
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.error-button:hover {
+  opacity: 0.9;
+}
+
+@media (max-width: 800px) {
+  .error-screen {
+    width: 95vw;
+    height: auto;
+    aspect-ratio: 3 / 2;
   }
 }
 </style>
