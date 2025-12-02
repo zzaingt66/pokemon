@@ -12,6 +12,7 @@ import { useTypeChartStore } from './typeChart'
 import { useTeamStore } from './team'
 import { validatePokemonType } from '@/services/typeChart/typeChartService'
 import { transformTeamMemberToBattlePokemon } from '@/services/teamBuilder'
+import { applyMoveEffect, type BattlePokemon } from '@/services/battle/battleEffectService'
 
 /**
  * Validate all types in a Pokemon
@@ -317,45 +318,77 @@ export const useBattleStore = defineStore('battle', {
         this.log.push(`¡${attacker.name} usó ${move.name}!`)
         await new Promise(resolve => setTimeout(resolve, 300))
 
-        // Calculate damage and effectiveness
-        const defenderType: import('@/domain/battle/engine/entities').Type | [import('@/domain/battle/engine/entities').Type, import('@/domain/battle/engine/entities').Type?] =
-          defender.types.length === 1
-            ? defender.types[0]!
-            : [defender.types[0]!, defender.types[1]]
+        // Handle status moves (no damage, only effects)
+        if (move.category === 'status' || move.power === 0) {
+          // Status move: apply effect only
+          if (move.effect) {
+            const effectResult = applyMoveEffect(
+              move.effect,
+              attacker as BattlePokemon,
+              defender as BattlePokemon,
+              rng
+            )
+            if (effectResult.applied && effectResult.message) {
+              this.log.push(effectResult.message)
+            }
+          }
+          await new Promise(resolve => setTimeout(resolve, 400))
+        } else {
+          // Damaging move: calculate damage and apply effect
+          const defenderType: import('@/domain/battle/engine/entities').Type | [import('@/domain/battle/engine/entities').Type, import('@/domain/battle/engine/entities').Type?] =
+            defender.types.length === 1
+              ? defender.types[0]!
+              : [defender.types[0]!, defender.types[1]]
 
-        const effectiveness = computeTypeMultiplier(move.type, defenderType)
+          const effectiveness = computeTypeMultiplier(move.type, defenderType)
 
-        // Show effectiveness
-        if (effectiveness === 2) this.log.push('¡Es súper efectivo!')
-        if (effectiveness === 0.5) this.log.push('No es muy efectivo...')
-        if (effectiveness === 0) this.log.push('¡No tiene efecto!')
+          // Show effectiveness
+          if (effectiveness === 2) this.log.push('¡Es súper efectivo!')
+          if (effectiveness === 0.5) this.log.push('No es muy efectivo...')
+          if (effectiveness === 0) this.log.push('¡No tiene efecto!')
 
-        await new Promise(resolve => setTimeout(resolve, 200))
+          await new Promise(resolve => setTimeout(resolve, 200))
 
-        // Calculate and apply damage NOW (sequentially)
-        const atk = move.category === 'physical' ? attacker.stats.atk : attacker.stats.spAtk
-        const def = move.category === 'physical' ? defender.stats.def : defender.stats.spDef
+          // Calculate and apply damage NOW (sequentially)
+          const atk = move.category === 'physical' ? attacker.stats.atk : attacker.stats.spAtk
+          const def = move.category === 'physical' ? defender.stats.def : defender.stats.spDef
 
-        const damage = calculateDamage({
-          level: attacker.level,
-          power: move.power,
-          atk,
-          def,
-          category: move.category,
-          multiplier: effectiveness,
-          rng,
-        })
+          const damage = calculateDamage({
+            level: attacker.level,
+            power: move.power,
+            atk,
+            def,
+            category: move.category,
+            multiplier: effectiveness,
+            rng,
+          })
 
-        // Apply damage to defender
-        defender.currentHp = Math.max(0, defender.currentHp - damage)
+          // Apply damage to defender
+          defender.currentHp = Math.max(0, defender.currentHp - damage)
 
-        // Show damage message + hit sound (triggered by log watch)
-        this.log.push(`¡${defender.name} recibió ${damage} puntos de daño!`)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Wait for hit animation
+          // Show damage message + hit sound (triggered by log watch)
+          this.log.push(`¡${defender.name} recibió ${damage} puntos de daño!`)
+          await new Promise(resolve => setTimeout(resolve, 500)) // Wait for hit animation
 
-        // Check if defender fainted
-        if (defender.currentHp <= 0) {
-          this.log.push(`¡${defender.name} se debilitó!`)
+          // Apply move effect after damage (e.g., Thunderbolt's 10% paralysis)
+          // Feature 005: Status moves support via PokeAPI data
+          if (move.effect) {
+            const effectResult = applyMoveEffect(
+              move.effect,
+              attacker as BattlePokemon,
+              defender as BattlePokemon,
+              rng
+            )
+            if (effectResult.applied && effectResult.message) {
+              this.log.push(effectResult.message)
+              await new Promise(resolve => setTimeout(resolve, 400))
+            }
+          }
+
+          // Check if defender fainted
+          if (defender.currentHp <= 0) {
+            this.log.push(`¡${defender.name} se debilitó!`)
+          }
         }
       }
     },
