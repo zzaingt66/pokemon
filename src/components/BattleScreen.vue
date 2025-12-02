@@ -28,18 +28,90 @@ const props = defineProps<Props>()
 
 // Stores
 const battleStore = useBattleStore()
-const { rivalRemainingPokemon, playerRemainingPokemon, startBattle: startTrainerBattle } = useTrainerBattle()
+const teamStore = useTeamStore()
+const { rivalRemainingPokemon, startBattle: startTrainerBattle } = useTrainerBattle()
+
+// Convert Team Builder Pokemon to Battle Engine format (T027)
+const convertTeamMemberToBattlePokemon = (teamMember: TeamMember): Pokemon => {
+  return {
+    id: teamMember.pokemon.id.toString(),
+    name: teamMember.pokemon.name,
+    types: teamMember.pokemon.types,
+    level: teamMember.level || 50,
+    stats: {
+      hp: teamMember.maxHp || teamMember.pokemon.stats.hp,
+      atk: teamMember.pokemon.stats.attack,
+      def: teamMember.pokemon.stats.defense,
+      spAtk: teamMember.pokemon.stats.spAttack,
+      spDef: teamMember.pokemon.stats.spDefense,
+      speed: teamMember.pokemon.stats.speed,
+    },
+    currentHp: teamMember.currentHp || teamMember.maxHp || teamMember.pokemon.stats.hp,
+    moves: teamMember.selectedMoves.map((move: TeamBuilderMove) => {
+      // Battle engine only supports 'physical' | 'special', convert 'status' to 'special'
+      const category = move.category?.toLowerCase() === 'status'
+        ? 'special'
+        : (move.category?.toLowerCase() as 'physical' | 'special' || 'physical')
+
+      return {
+        id: move.id.toString(),
+        name: move.name,
+        type: move.type,
+        power: move.power || 0,
+        accuracy: move.accuracy || 100,
+        category,
+        pp: move.pp || 15,
+      }
+    }),
+  }
+}
+
+// Get player team from Team Builder or use fallback (T026, T028)
+const getPlayerTeam = computed(() => {
+  // FR-003: Validate team has at least 1 Pokemon with moves
+  if (teamStore.roster.length > 0) {
+    const convertedTeam = teamStore.roster.map(convertTeamMemberToBattlePokemon)
+    // Validate that at least the lead Pokémon has moves
+    if (convertedTeam[0] && convertedTeam[0].moves.length > 0) {
+      console.log('[BattleScreen] Using Team Builder team:', convertedTeam.length, 'Pokemon')
+      return convertedTeam
+    }
+    console.warn('[BattleScreen] Team Builder team invalid (no moves), aborting battle start')
+    return []
+  }
+
+  console.warn('[BattleScreen] No Team Builder roster available')
+  return []
+})
 
 // Audio setup
 const audioPort = createHowlerAudio(DEFAULT_BATTLE_SOUNDS)
 const { play: playSound } = useAudio(audioPort)
 
+// Sprite loading with fallback - reactive refs that update when Pokemon changes
+const playerPokemonName = computed(() => battleStore.player.name)
+const enemyPokemonName = computed(() => battleStore.npc.name)
+
+const playerSprite = useSpriteLoader({
+  pokemonName: playerPokemonName,
+  view: 'back',
+  timeout: 3000,
+})
+
+const enemySprite = useSpriteLoader({
+  pokemonName: enemyPokemonName,
+  view: 'front',
+  timeout: 3000,
+})
+
 // Estado de la batalla
 const currentView = ref<'main' | 'fight' | 'bag' | 'pokemon' | 'trainer-waiting' | 'player-team-switch' | 'enemy-team-switch'>('main')
-const damageEffect = ref<{ active: boolean; target: 'player' | 'enemy' }>({ active: false, target: 'player' })
-const attackEffect = ref<{ active: boolean; target: 'player' | 'enemy'; type: string }>({ active: false, target: 'player', type: 'normal' })
+const battleMenuView = computed(() => currentView.value as 'main' | 'fight')
+const shakeEffect = ref<{ active: boolean; target: 'player' | 'enemy' }>({ active: false, target: 'player' })
 const waitingTrainer = ref<TrainerData | null>(null)
 const waitingForTrainerSwitch = ref(false)
+const isAttacking = ref(false)
+const isBattleReady = ref(false) // Track if battle is fully initialized
 
 // Watch para sonidos sincronizados
 watch(
@@ -221,8 +293,16 @@ const handleBack = () => {
 
 // Inicializar batalla
 onMounted(async () => {
-  // Usar props.playerTeam si se proporciona, si no, usar PLAYER_TEAM como equipo por defecto
-  const team = props.playerTeam || PLAYER_TEAM.map(p => structuredClone(p))
+  // FR-002: Load team from localStorage before battle initialization
+  // T027: Use team from Team Builder if available, otherwise use props or fallback
+  // FR-003: Validate team before using
+  const team = props.playerTeam || getPlayerTeam.value
+
+  // Final validation
+  if (!team || team.length === 0) {
+    console.error('[BattleScreen]  CRITICAL: No valid team available!')
+    return
+  }
 
   if (isTrainerBattle.value && props.trainer) {
     // Batalla contra entrenador

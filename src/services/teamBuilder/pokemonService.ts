@@ -92,6 +92,7 @@ export async function fetchPokemon(
     return pokemonCache.get(id)!
   }
 
+  
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
@@ -235,15 +236,22 @@ export function transformTeamMemberToBattlePokemon(
   const maxHp = Math.floor(((2 * pokemon.stats.hp + 31) * level) / 100) + level + 10
 
   // Map team builder Move → battle Move (simplified for MVP)
+  // Battle engine only supports 'physical' | 'special', convert 'status' to 'special'
   const battleMoves: import('@/domain/battle/engine/entities').Move[] = selectedMoves.map(
-    (move) => ({
-      id: move.id.toString(),
-      name: move.name,
-      type: move.type as import('@/domain/battle/engine/entities').Type,
-      power: move.power ?? 0, // Status moves have null power
-      accuracy: move.accuracy ?? 100, // Accuracy-ignoring moves (null) → 100
-      category: move.category.toLowerCase() as import('@/domain/battle/engine/entities').Category,
-    })
+    (move) => {
+      const rawCategory = move.category.toLowerCase()
+      // Status moves are treated as 'special' for battle engine compatibility
+      const category: 'physical' | 'special' = rawCategory === 'status' ? 'special' : (rawCategory as 'physical' | 'special')
+
+      return {
+        id: move.id.toString(),
+        name: move.name,
+        type: move.type as import('@/domain/battle/engine/entities').Type,
+        power: move.power ?? 0, // Status moves have null power
+        accuracy: move.accuracy ?? 100, // Accuracy-ignoring moves (null) → 100
+        category,
+      }
+    }
   )
 
   // Map team builder Pokemon → battle Pokemon

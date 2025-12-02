@@ -7,7 +7,7 @@ import { createSeededRng } from '@/domain/battle/calc/rng'
 import { createStrategicAI } from '@/domain/battle/ai/strategicAI'
 import { computeTypeMultiplier } from '@/domain/battle/calc/typeChart'
 import { calculateDamage } from '@/domain/battle/calc/damage'
-import { SAMPLE_PLAYER, SAMPLE_NPC } from '@/data/pokemon'
+import { SAMPLE_NPC } from '@/data/pokemon'
 import { useTypeChartStore } from './typeChart'
 import { useTeamStore } from './team'
 import { validatePokemonType } from '@/services/typeChart/typeChartService'
@@ -24,9 +24,55 @@ function validatePokemonTypes(pokemon: Pokemon, typeChart: Record<string, Record
   }
 }
 
+const PLACEHOLDER_MOVE: Move = {
+  id: 'placeholder-move',
+  name: 'Esperar',
+  type: 'Normal',
+  power: 0,
+  accuracy: 100,
+  category: 'physical',
+}
+
+function createPlaceholderPokemon(): Pokemon {
+  return {
+    id: 'placeholder-player',
+    name: 'Selecciona tu equipo',
+    types: ['Normal'],
+    level: 1,
+    stats: { hp: 1, atk: 1, def: 1, spAtk: 1, spDef: 1, speed: 1 },
+    currentHp: 1,
+    moves: [PLACEHOLDER_MOVE],
+  }
+}
+
+/**
+ * Deep clone a Pokemon object safely without using structuredClone
+ * This avoids issues with non-cloneable references
+ */
+function clonePokemon(pokemon: Pokemon): Pokemon {
+  return {
+    id: pokemon.id,
+    name: pokemon.name,
+    types: [...pokemon.types],
+    level: pokemon.level,
+    stats: { ...pokemon.stats },
+    currentHp: pokemon.currentHp,
+    moves: pokemon.moves.map(m => ({ ...m })),
+  }
+}
+
 export const useBattleStore = defineStore('battle', {
   state: (): BattleState & { seed?: string | number; ai: AI } => ({
-    ...createInitialState([SAMPLE_PLAYER], [SAMPLE_NPC]),
+    turn: 1,
+    phase: 'select',
+    player: createPlaceholderPokemon(),
+    npc: clonePokemon(SAMPLE_NPC),
+    playerTeam: [],
+    npcTeam: [clonePokemon(SAMPLE_NPC)],
+    currentPlayerIndex: 0,
+    currentNpcIndex: 0,
+    winner: null,
+    log: [],
     seed: undefined,
     ai: createStrategicAI(),
   }),
@@ -53,8 +99,15 @@ export const useBattleStore = defineStore('battle', {
       }
 
       // Deep clone teams to ensure we have fresh Pokemon with full HP
-      const playerTeamClone = playerTeam.map(p => structuredClone(p))
-      const npcTeamClone = npcTeam.map(p => structuredClone(p))
+      const playerTeamClone = playerTeam.map(p => clonePokemon(p))
+      const npcTeamClone = npcTeam.map(p => clonePokemon(p))
+
+      if (playerTeamClone.length === 0) {
+        throw new Error('Cannot start battle: player team is empty')
+      }
+      if (npcTeamClone.length === 0) {
+        throw new Error('Cannot start battle: NPC team is empty')
+      }
 
       // Validate all Pokemon types
       const allPokemon = [...playerTeamClone, ...npcTeamClone]
@@ -98,35 +151,40 @@ export const useBattleStore = defineStore('battle', {
         throw new Error('Cannot start battle: team is empty')
       }
 
-      const teamLead = teamStore.roster[0]
-      if (!teamLead) {
-        throw new Error('Cannot start battle: team lead is missing')
+      const convertedTeam = teamStore.roster
+        .map(transformTeamMemberToBattlePokemon)
+        .map(pokemon => {
+          // Manual deep clone to avoid structuredClone issues with complex objects
+          const clone: Pokemon = {
+            id: pokemon.id,
+            name: pokemon.name,
+            types: [...pokemon.types],
+            level: pokemon.level,
+            stats: { ...pokemon.stats },
+            currentHp: pokemon.stats.hp, // Reset HP to max
+            moves: pokemon.moves.map(m => ({ ...m })),
+          }
+          return clone
+        })
+
+      if (convertedTeam.length === 0) {
+        throw new Error('Cannot start battle: team is empty')
       }
 
-      if (teamLead.selectedMoves.length === 0) {
-        throw new Error('Cannot start battle: team lead has no moves')
+      const npcTeam = [clonePokemon(SAMPLE_NPC)]
+
+      // Validate Pokemon types for both teams
+      for (const pokemon of convertedTeam) {
+        validatePokemonTypes(pokemon, typeChartStore.typeChart)
       }
+      validatePokemonTypes(npcTeam[0]!, typeChartStore.typeChart)
 
-      // Transform team lead to battle Pokemon
-      const playerPokemon = transformTeamMemberToBattlePokemon(teamLead)
-
-      // Use SAMPLE_NPC as opponent (deep clone)
-      const npcClone = structuredClone(SAMPLE_NPC)
-
-      // Validate Pokemon types
-      validatePokemonTypes(playerPokemon, typeChartStore.typeChart)
-      validatePokemonTypes(npcClone, typeChartStore.typeChart)
-
-      // Reset HP to max
-      playerPokemon.currentHp = playerPokemon.stats.hp
-      npcClone.currentHp = npcClone.stats.hp
-
-      const initial = createInitialState(playerPokemon, npcClone)
+      const initial = createInitialState(convertedTeam, npcTeam)
       const ai = createStrategicAI()
 
       this.$patch({ ...initial, seed, ai, log: [], turn: 1, phase: 'select', winner: null })
 
-      console.log(`[BattleStore] Started battle with custom team lead: ${playerPokemon.name}`)
+      console.log(`[BattleStore] Started battle with custom team lead: ${initial.player.name}`)
     },
 
     async selectPlayerMove(moveId: string) {
