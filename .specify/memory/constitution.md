@@ -1,27 +1,31 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version: 1.1.0 → 1.2.0
-Change Type: MINOR - Added shadcn-vue component library to approved stack
+Version: 1.2.0 → 1.3.0
+Change Type: MINOR - Enhanced testing discipline and added quality enforcement
 
 Modified Principles:
-- VI. UI/UX Design System - Enhanced with shadcn-vue component library requirement
+- IV. Testing Culture - Added MANDATORY type-checking and test execution after critical features
+- VII. Quality Enforcement (NEW) - Added explicit validation checkpoints for feature integration
 
 Added Sections:
-- Architecture & Tech Stack: Added shadcn-vue to Approved Libraries
-- Architecture & Tech Stack: Added UI Component Library section
+- Core Principles: VII. Quality Enforcement - Test execution requirements for battle, team builder, and core modules
+- Development Workflow: Added "Feature Completion Checklist" section
 
 Removed Sections:
 - None
 
 Templates Status:
-✅ plan-template.md - No updates required (component library usage covered by constitution)
-✅ spec-template.md - No updates required (UI requirements captured in FR)
-✅ tasks-template.md - No updates required (component tasks follow from spec)
+✅ plan-template.md - No updates required (testing already part of Definition of Done)
+✅ spec-template.md - No updates required (testing acceptance criteria already defined)
+✅ tasks-template.md - No updates required (testing tasks follow from spec)
+✅ commands/*.md - No updates required (constitution check remains generic)
+⚠️  README.md - Should be updated to reference testing discipline in feature development
 ✅ Constitution updated
 
 Follow-up TODOs:
-- None (all templates remain aligned)
+- Update README.md to include "Testing After Critical Features" section
+- Consider adding pre-commit hooks for type-check and lint
 -->
 
 # Pokémon MMO Constitution
@@ -29,6 +33,8 @@ Follow-up TODOs:
 ## Vision & Scope
 
 **Vision**: Build a scalable, performant web-based Pokémon MMO that provides engaging multiplayer gameplay with team management, battles, and trading mechanics.
+
+**Project Name**: Pokémon MMO
 
 **Success Criteria**:
 - Sub-100ms UI response time for core interactions
@@ -90,9 +96,16 @@ Testing requirements by component type:
 - **Components**: Integration tests REQUIRED for critical user flows (battle, trade, team management)
 - **Views/Routes**: Smoke tests REQUIRED ensuring render without crash
 
+**MANDATORY Quality Gates for Critical Features**:
+- After implementing ANY feature touching battle logic, team builder, or state management: `npm run type-check` MUST pass with zero errors
+- After implementing ANY feature touching battle logic, team builder, or state management: `npm run test` MUST be executed and all existing tests MUST pass
+- New test failures introduced by feature changes MUST be resolved before feature completion
+- Type errors MUST be fixed immediately - NO merging with type errors
+- Component interfaces MUST be validated: ensure stores are called correctly, props are typed, events are emitted properly
+
 Test-first approach ENCOURAGED but not mandatory. All PRs MUST include tests for new functionality.
 
-**Rationale**: Game logic complexity demands verifiable correctness; tests enable fearless refactoring.
+**Rationale**: Game logic complexity demands verifiable correctness; tests enable fearless refactoring. Type safety catches integration bugs before runtime. Critical features like battle and team builder require validation to prevent cascading failures.
 
 ### V. Performance & Accessibility
 
@@ -110,6 +123,31 @@ Accessibility requirements (NON-NEGOTIABLE):
 - Screen reader testing for critical flows
 
 **Rationale**: Performance = user retention; accessibility = inclusive design and legal compliance.
+
+### VII. Quality Enforcement (NON-NEGOTIABLE)
+
+**Critical Feature Validation Checkpoints**:
+
+After implementing changes to ANY of the following subsystems, developers MUST execute full validation:
+1. **Battle System** (BattleScreen.vue, battle.ts store, battle domain logic)
+2. **Team Builder** (Team components, team.ts store, localStorage integration)
+3. **Type System** (Type chart, effectiveness calculation, move categories)
+4. **State Management** (Any Pinia store modification)
+
+**Required Validation Steps** (MUST be completed before considering feature "done"):
+1. Run `npm run type-check` - MUST show zero errors
+2. Run `npm run test` - ALL existing tests MUST pass (new failures = feature incomplete)
+3. Manual smoke test of the affected feature in browser
+4. Verify console has no errors during feature execution
+5. Check that interfaces between components are correct (stores, props, events)
+
+**Integration Bug Prevention**:
+- When modifying store methods, VERIFY all components calling those methods
+- When changing component interfaces, VERIFY parent components using those props/events
+- When updating TypeScript types, VERIFY all files importing those types compile
+- localStorage integration MUST be tested: save → refresh → load → verify data integrity
+
+**Rationale**: Complex interactions between battle, team builder, and state management create high risk for integration bugs. Type checking catches interface mismatches. Test execution validates business logic. Manual testing catches UX regressions. This checkpoint prevents "feature complete but system broken" scenarios.
 
 ### VI. UI/UX Design System
 
@@ -211,11 +249,21 @@ src/
 ### Quality Gates
 
 MUST pass before merge:
-- `npm run type-check` - Zero TypeScript errors
+- `npm run type-check` - Zero TypeScript errors (NON-NEGOTIABLE)
 - `npm run lint` - Zero linting errors
-- Tests passing (when implemented)
-- No console errors in browser
+- `npm run test` - All tests passing (when test suite exists)
+- No console errors in browser during feature testing
 - Accessibility audit for UI changes
+
+**Feature Completion Checklist** (for critical features):
+- [ ] Type-check passes
+- [ ] All existing tests pass
+- [ ] New tests added for new functionality
+- [ ] Manual testing completed in browser
+- [ ] Console clean (no errors/warnings)
+- [ ] localStorage integration verified (if applicable)
+- [ ] Component integration verified (props/events/stores correct)
+- [ ] README or docs updated (if feature changes user-facing behavior)
 
 ### Release Process
 
@@ -273,4 +321,4 @@ MUST pass before merge:
 
 ---
 
-**Version**: 1.2.0 | **Ratified**: 2025-11-28 | **Last Amended**: 2025-11-30
+**Version**: 1.3.0 | **Ratified**: 2025-11-28 | **Last Amended**: 2025-12-01
