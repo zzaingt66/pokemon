@@ -17,7 +17,7 @@ function navigateToTeamBuilder() {
 
     <div class="navigation-buttons">
       <button class="nav-button team-builder-button" @click="navigateToTeamBuilder">
-        🎯 Team Builder
+        Team Builder
       </button>
     </div>
 

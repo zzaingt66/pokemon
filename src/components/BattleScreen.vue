@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import BattleTeamSelector from './BattleTeamSelector.vue'
-import PokemonTeamSwitcher from './PokemonTeamSwitcher.vue'
+import BattleTeamSelector from './battle/BattleTeamSelector.vue'
+import PokemonTeamSwitcher from './battle/PokemonTeamSwitcher.vue'
 import TrainerWaitingScreen from './TrainerWaitingScreen.vue'
-import BagScreen from './BagScreen.vue'
+import BagScreen from './battle/BagScreen.vue'
 import BattleField from './battle/BattleField.vue'
 import BattleActionMenu from './battle/BattleActionMenu.vue'
 import { useBattleStore } from '@/stores/battle'

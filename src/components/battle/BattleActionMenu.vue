@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import MoveSelector from '../MoveSelector.vue'
-import LogPanel from '../LogPanel.vue'
-import type { Pokemon, Move } from '@/domain/battle/engine/entities'
+import LogPanel from './LogPanel.vue'
+import type { Move } from '@/domain/battle/engine/entities'
 
 interface Props {
   currentView: 'main' | 'fight'
@@ -11,15 +11,9 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const { currentView, logMessages, playerMoves, isAttacking } = props
 
-const emit = defineEmits<{
-  (e: 'fight'): void
-  (e: 'bag'): void
-  (e: 'pokemon'): void
-  (e: 'run'): void
-  (e: 'select-move', moveId: string): void
-  (e: 'back'): void
-}>()
+
 </script>
 
 <template>
