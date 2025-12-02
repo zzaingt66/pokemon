@@ -169,7 +169,7 @@ async function startBattle() {
             :disabled="isTeamEmpty || !hasLeadPokemon"
             @click="startBattle"
           >
-            ⚔️ Start Battle
+            Start Battle
           </button>
         </div>
       </div>

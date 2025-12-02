@@ -1,16 +1,16 @@
 <template>
   <div
-    class="space-y-2 relative p-4 bg-slate-50 dark:bg-slate-800 rounded transition-transform duration-200"
+    class="space-y-2 relative p-4 bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 shadow-xl transition-transform duration-200"
     :class="{ 'attack-animation': isAttacking }"
   >
     <div>
-      <h2 class="font-semibold text-lg dark:text-white">{{ pokemon?.name }}</h2>
-      <p class="text-sm text-slate-600 dark:text-slate-400">{{ pokemon?.types.join('/') }}</p>
+      <h2 class="font-semibold text-lg text-gray-900 dark:text-white">{{ pokemon?.name }}</h2>
+      <p class="text-sm text-gray-700 dark:text-gray-300">{{ pokemon?.types.join('/') }}</p>
     </div>
 
-    <!-- HP Bar with smooth animation -->
+    <!-- HP Bar with smooth animation and gradient -->
     <div class="relative">
-      <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+      <div class="h-4 bg-gray-200/50 dark:bg-gray-700/50 backdrop-blur-sm rounded-full overflow-hidden border border-white/20">
         <div
           class="h-full transition-all duration-500 ease-out rounded-full"
           :class="getHPBarClass(hpPercent)"
@@ -22,7 +22,7 @@
           :aria-label="`${pokemon?.name} HP`"
         ></div>
       </div>
-      <p class="text-xs mt-1 dark:text-gray-300">
+      <p class="text-xs mt-1 text-gray-800 dark:text-gray-200 font-medium">
         HP: {{ pokemon?.currentHp }} / {{ pokemon?.stats.hp }}
       </p>
     </div>

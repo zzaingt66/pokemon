@@ -1,18 +1,18 @@
 <template>
   <div
-    class="p-3 bg-slate-100 dark:bg-slate-800 rounded min-h-32 max-h-48 overflow-y-auto"
+    class="p-3 bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 shadow-xl min-h-32 max-h-48 overflow-y-auto"
     role="log"
     aria-live="polite"
     aria-atomic="false"
     aria-label="Battle log"
   >
-    <p v-if="battleStore.log.length === 0" class="text-sm text-slate-500 dark:text-slate-400">
+    <p v-if="battleStore.log.length === 0" class="text-sm text-gray-600 dark:text-gray-300">
       Battle messages will appear here.
     </p>
     <div
       v-for="(msg, i) in battleStore.log"
       :key="i"
-      :class="['text-sm py-0.5 dark:text-white', getMessageClass(msg)]"
+      :class="['text-sm py-0.5', getMessageClass(msg)]"
     >
       {{ msg }}
     </div>
