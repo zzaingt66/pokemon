@@ -78,10 +78,40 @@ export interface PokeAPIMoveResponse {
       url: string
     }
   }>
+  effect_chance?: number | null // chance for secondary effect (e.g., 10 for 10%)
   priority?: number // not used in MVP
   target?: {
     name: string
     url: string
+  }
+  /** Stat changes applied by this move */
+  stat_changes?: Array<{
+    change: number // positive or negative change (-6 to +6)
+    stat: {
+      name: string // e.g., "attack", "defense", "speed"
+      url: string
+    }
+  }>
+  /** Move metadata including status ailments */
+  meta?: {
+    ailment?: {
+      name: string // e.g., "paralysis", "sleep", "poison", "burn", "freeze", "none"
+      url: string
+    }
+    ailment_chance?: number // 0-100, chance of applying ailment
+    category?: {
+      name: string // e.g., "damage", "ailment", "net-good-stats", "heal"
+      url: string
+    }
+    crit_rate?: number
+    drain?: number
+    flinch_chance?: number
+    healing?: number
+    max_hits?: number | null
+    max_turns?: number | null
+    min_hits?: number | null
+    min_turns?: number | null
+    stat_chance?: number // chance for stat changes to occur
   }
 }
 
