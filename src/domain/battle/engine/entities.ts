@@ -1,9 +1,11 @@
+import type { MoveEffect } from '@/models/moveEffect'
+
 export type Type =
   | 'Normal' | 'Fire' | 'Water' | 'Electric' | 'Grass' | 'Ice'
   | 'Fighting' | 'Poison' | 'Ground' | 'Flying' | 'Psychic' | 'Bug'
   | 'Rock' | 'Ghost' | 'Dragon' | 'Dark' | 'Steel' | 'Fairy'
 
-export type Category = 'physical' | 'special'
+export type Category = 'physical' | 'special' | 'status'
 
 export interface Move {
   id: string
@@ -12,6 +14,8 @@ export interface Move {
   power: number
   accuracy: number // 0-100
   category: Category
+  /** Optional effect for status moves (T006) */
+  effect?: MoveEffect
 }
 
 export interface Stats {
