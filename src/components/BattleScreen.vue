@@ -1,22 +1,25 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import MoveSelector from './MoveSelector.vue'
 import BattleTeamSelector from './BattleTeamSelector.vue'
 import PokemonTeamSwitcher from './PokemonTeamSwitcher.vue'
 import TrainerWaitingScreen from './TrainerWaitingScreen.vue'
-import LogPanel from './LogPanel.vue'
-import StatusPanel from './StatusPanel.vue'
+import BagScreen from './BagScreen.vue'
+import BattleField from './battle/BattleField.vue'
+import BattleActionMenu from './battle/BattleActionMenu.vue'
 import { useBattleStore } from '@/stores/battle'
+import { useTeamStore } from '@/stores/team'
 import { useTrainerBattle } from '../composables/useTrainerBattle'
 import { useAudio } from '../composables/useAudio'
-import { SAMPLE_NPC, PLAYER_TEAM } from '@/data/pokemon'
-import { getPokemonFrontSpriteUrl, getPokemonBackSpriteUrl } from '@/utils/pokemonSpriteMap'
+import { useSpriteLoader } from '../composables/useSpriteLoader'
+import { itemService } from '@/services/itemService'
+import { SAMPLE_NPC } from '@/data/pokemon'
 import { createHowlerAudio, DEFAULT_BATTLE_SOUNDS } from '@/services/audio/howlerAudio'
 import { getRandomTrainer } from '@/data/trainersData'
-import { getAttackEffect } from '@/utils/attackEffects'
 import type { Trainer } from '@/data/trainers'
 import type { Pokemon } from '@/domain/battle/engine/entities'
 import type { TrainerData } from '@/data/trainersData'
+import type { TeamMember, Move as TeamBuilderMove } from '@/models/teamBuilder'
+import type { Item } from '@/models/item'
 
 // Props
 interface Props {
@@ -119,35 +122,18 @@ watch(
   (newMessage) => {
     if (!newMessage) return
 
-    // Detectar ataques y aplicar efectos
+    // Detectar ataques y aplicar efecto de sacudida
     if (newMessage.includes('usó')) {
-      // Extraer tipo de ataque del mensaje o usar el del movimiento
-      const moveMatch = newMessage.match(/usó (.+)!/)
-      if (moveMatch) {
-        const moveName = moveMatch[1]
-        // Buscar el movimiento para obtener su tipo
-        const playerMove = battleStore.player.moves.find(m => m.name === moveName)
-        const npcMove = battleStore.npc.moves.find(m => m.name === moveName)
-        const moveType = playerMove?.type || npcMove?.type || 'normal'
-
-        // Determinar quién atacó
-        if (newMessage.includes(battleStore.player.name)) {
-          triggerAttackEffect('enemy', moveType)
-        } else if (newMessage.includes(battleStore.npc.name)) {
-          triggerAttackEffect('player', moveType)
-        }
+      if (newMessage.includes(battleStore.player.name)) {
+        triggerShake('enemy')
+      } else if (newMessage.includes(battleStore.npc.name)) {
+        triggerShake('player')
       }
     }
 
     // Sonidos de ataques y daño
     if (newMessage.includes('recibió')) {
       playSound('hit')
-      // Detectar quién recibió daño
-      if (newMessage.includes(battleStore.npc.name)) {
-        triggerDamageEffect('enemy')
-      } else if (newMessage.includes(battleStore.player.name)) {
-        triggerDamageEffect('player')
-      }
     }
     // Sonidos de fallos
     if (newMessage.includes('falló')) {
@@ -164,21 +150,12 @@ watch(
   }
 )
 
-// Efecto de daño
-const triggerDamageEffect = (target: 'player' | 'enemy') => {
-  damageEffect.value = { active: true, target }
+// Efecto de sacudida simple
+const triggerShake = (target: 'player' | 'enemy') => {
+  shakeEffect.value = { active: true, target }
   setTimeout(() => {
-    damageEffect.value = { active: false, target }
-  }, 300)
-}
-
-// Efecto de ataque especial
-const triggerAttackEffect = (target: 'player' | 'enemy', moveType: string) => {
-  attackEffect.value = { active: true, target, type: moveType }
-  const effect = getAttackEffect(moveType)
-  setTimeout(() => {
-    attackEffect.value = { active: false, target, type: 'normal' }
-  }, effect.duration)
+    shakeEffect.value = { active: false, target }
+  }, 400)
 }
 
 // Computed
@@ -190,11 +167,6 @@ const enemyHpPercent = computed(() =>
   (battleStore.npc.currentHp / battleStore.npc.stats.hp) * 100
 )
 
-const getHpColor = (percent: number) => {
-  if (percent > 50) return '#10b981'
-  if (percent > 25) return '#fbbf24'
-  return '#ef4444'
-}
 
 const isTrainerBattle = computed(() => props.trainer !== undefined)
 
@@ -243,8 +215,16 @@ const handleRun = () => {
 }
 
 const handleMoveSelected = async (moveId: string) => {
+  if (isAttacking.value) return
+
+  isAttacking.value = true
   await battleStore.selectPlayerMove(moveId)
-  currentView.value = 'main'
+
+  // Esperar un momento antes de volver a la vista principal
+  setTimeout(() => {
+    isAttacking.value = false
+    currentView.value = 'main'
+  }, 400)
 }
 
 const handleSwitchPokemon = async (pokemonIndex: number) => {
@@ -268,6 +248,18 @@ const handleSwitchPokemon = async (pokemonIndex: number) => {
   battleStore.log.push(`¡Adelante, ${newPokemon.name}!`)
 
   currentView.value = 'main'
+}
+
+const handleUseItem = (item: Item) => {
+  if (itemService.useItem(item.id)) {
+    battleStore.log.push(`¡Has usado ${item.name}!`)
+    // Here we would implement the actual item effect logic
+    // For now, just simulate a turn usage
+    setTimeout(() => {
+      currentView.value = 'main'
+      // Trigger enemy turn or whatever comes next
+    }, 1000)
+  }
 }
 
 const handleTrainerPokemonSelected = async (pokemonIndex: number) => {
@@ -311,14 +303,16 @@ onMounted(async () => {
     battleStore.log.push(`¡${props.trainer.name} envió a ${battleStore.npc.name}!`)
     battleStore.log.push(`¡Adelante, ${battleStore.player.name}!`)
   } else {
-    // Batalla salvaje - crear equipo por defecto si es necesario
-    const playerTeamToUse = team
+    // Batalla salvaje - usar equipo del jugador
     const npcTeamToUse = [structuredClone(SAMPLE_NPC)]
 
-    await battleStore.startBattle(playerTeamToUse, npcTeamToUse)
+    await battleStore.startBattle(team, npcTeamToUse)
     battleStore.log.push('¡Un Pokémon salvaje apareció!')
     battleStore.log.push(`¡Adelante, ${battleStore.player.name}!`)
   }
+
+  // Mark battle as ready
+  isBattleReady.value = true
 })
 
 // Watch para el log
@@ -359,216 +353,43 @@ watch(() => battleStore.log, () => {
   <div class="battle-container">
     <div class="battle-screen">
       <!-- Campo de batalla -->
-      <div class="battlefield">
-        <!-- Información del Pokémon enemigo -->
-        <div class="enemy-info-panel">
-          <div class="info-box enemy-box">
-            <div class="name-level-row">
-              <span class="pokemon-name">{{ battleStore.npc.name }}</span>
-            </div>
-            <div class="level-row">:L{{ battleStore.npc.level }}</div>
-            <div class="hp-display">
-              <span class="hp-text">HP</span>
-              <div class="hp-bar-outer">
-                <div
-                  class="hp-bar-inner"
-                  :style="{
-                    width: enemyHpPercent + '%',
-                    backgroundColor: getHpColor(enemyHpPercent)
-                  }"
-                />
-              </div>
-            </div>
-            <!-- Equipo rival disponible -->
-            <div v-if="isTrainerBattle" class="team-indicator">
-              Equipo: {{ rivalRemainingPokemon }}/{{ battleStore.npcTeam.length }}
-            </div>
-          </div>
-        </div>
+      <BattleField
+        :player-pokemon="battleStore.player"
+        :npc-pokemon="battleStore.npc"
+        :player-sprite="playerSprite"
+        :enemy-sprite="enemySprite"
+        :player-hp-percent="playerHpPercent"
+        :enemy-hp-percent="enemyHpPercent"
+        :shake-effect="shakeEffect"
+        :is-trainer-battle="isTrainerBattle"
+        :rival-remaining-pokemon="rivalRemainingPokemon"
+        :npc-team-length="battleStore.npcTeam.length"
+      />
 
-        <!-- Sprite enemigo -->
-        <div class="enemy-sprite-area">
-          <div class="sprite-platform enemy-platform"></div>
-          <img
-            :src="getPokemonFrontSpriteUrl(battleStore.npc.name)"
-            :alt="battleStore.npc.name"
-            :class="[
-              'pokemon-sprite enemy-sprite',
-              { 'damage-hit': damageEffect.active && damageEffect.target === 'enemy' },
-              { 'attack-effect': attackEffect.active && attackEffect.target === 'enemy', [`attack-${attackEffect.type}`]: attackEffect.active && attackEffect.target === 'enemy' }
-            ]"
-          >
-          <!-- Efecto de ataque -->
-          <div
-            v-if="attackEffect.active && attackEffect.target === 'enemy'"
-            :class="['attack-effect-overlay', `effect-${attackEffect.type}`]"
-            :style="{ backgroundColor: getAttackEffect(attackEffect.type).color }"
-          />
-        </div>
-
-        <!-- Sprite jugador -->
-        <div class="player-sprite-area">
-          <div class="sprite-platform player-platform"></div>
-          <img
-            :src="getPokemonBackSpriteUrl(battleStore.player.name)"
-            :alt="battleStore.player.name"
-            :class="[
-              'pokemon-sprite player-sprite',
-              { 'damage-hit': damageEffect.active && damageEffect.target === 'player' },
-              { 'attack-effect': attackEffect.active && attackEffect.target === 'player', [`attack-${attackEffect.type}`]: attackEffect.active && attackEffect.target === 'player' }
-            ]"
-          >
-          <!-- Efecto de ataque -->
-          <div
-            v-if="attackEffect.active && attackEffect.target === 'player'"
-            :class="['attack-effect-overlay', `effect-${attackEffect.type}`]"
-            :style="{ backgroundColor: getAttackEffect(attackEffect.type).color }"
-          />
-        </div>
-
-        <!-- Información del Pokémon jugador -->
-        <div class="player-info-panel">
-          <div class="info-box player-box">
-            <div class="name-level-row">
-              <span class="pokemon-name">{{ battleStore.player.name }}</span>
-            </div>
-            <div class="level-row">:L{{ battleStore.player.level }}</div>
-            <div class="hp-display">
-              <span class="hp-text">HP</span>
-              <div class="hp-bar-outer">
-                <div
-                  class="hp-bar-inner"
-                  :style="{
-                    width: playerHpPercent + '%',
-                    backgroundColor: getHpColor(playerHpPercent)
-                  }"
-                />
-              </div>
-            </div>
-            <div class="hp-numbers">{{ battleStore.player.currentHp }} / {{ battleStore.player.stats.hp }}</div>
-            <!-- Equipo disponible -->
-            <div class="team-indicator">
-              Equipo: {{ playerRemainingPokemon }}/{{ battleStore.playerTeam.length }}
-            </div>
-          </div>
-        </div>
-
-        <!-- StatusPanel (componente enlazado) -->
-        <StatusPanel
-          v-if="battleStore.player && battleStore.npc"
-          :player-pokemon="battleStore.player"
-          :enemy-pokemon="battleStore.npc"
-          class="status-overlay"
+      <!-- Panel de control -->
+      <div class="control-area-wrapper">
+        <BattleActionMenu
+          v-if="currentView === 'main' || currentView === 'fight'"
+          :current-view="battleMenuView"
+          :log-messages="battleStore.log"
+          :player-moves="battleStore.player.moves"
+          :is-attacking="isAttacking"
+          @fight="handleFight"
+          @bag="handleBag"
+          @pokemon="handlePokemon"
+          @run="handleRun"
+          @select-move="handleMoveSelected"
+          @back="handleBack"
         />
-      </div>
-
-      <!-- Panel de control - AGRANDADO -->
-      <div class="control-area">
-        <!-- Vista principal -->
-        <template v-if="currentView === 'main'">
-          <!-- Contenedor de Log y Botones lado a lado -->
-          <div class="main-layout">
-            <!-- LogPanel en el lado izquierdo -->
-            <div class="log-section">
-              <LogPanel
-                :messages="battleStore.log"
-                :max-messages="8"
-                :is-battle-style="true"
-              />
-            </div>
-
-            <!-- Botones de acciones en el lado derecho -->
-            <div class="action-panel">
-              <button class="action-btn" @click="handleFight">
-                <span class="action-text">FIGHT</span>
-              </button>
-              <button class="action-btn" @click="handleBag">
-                <span class="action-text">BAG</span>
-              </button>
-              <button class="action-btn" @click="handlePokemon">
-                <span class="action-text">POKéMON</span>
-              </button>
-              <button class="action-btn" @click="handleRun">
-                <span class="action-text">RUN</span>
-              </button>
-            </div>
-          </div>
-        </template>
-
-        <!-- MoveSelector con LogPanel a su lado -->
-        <template v-else-if="currentView === 'fight'">
-          <div class="fight-layout">
-            <!-- LogPanel en el lado izquierdo -->
-            <div class="log-section">
-              <LogPanel
-                :messages="battleStore.log"
-                :max-messages="8"
-                :is-battle-style="true"
-              />
-            </div>
-
-            <!-- MoveSelector en el lado derecho -->
-            <div class="move-section">
-              <MoveSelector
-                :moves="battleStore.player.moves"
-                :is-battle-style="true"
-                @select-move="handleMoveSelected"
-                @back="handleBack"
-              />
-              <button class="back-button" @click="handleBack">
-                <span class="back-arrow">←</span> ATRÁS
-              </button>
-            </div>
-          </div>
-        </template>
 
         <!-- Vista de mochila -->
-        <div v-else-if="currentView === 'bag'" class="bag-panel">
-          <div class="bag-header">MOCHILA</div>
-          <div class="bag-items">
-            <div class="bag-item">
-              <img
-                src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/potion.png"
-                alt="Potion"
-                class="item-sprite"
-              />
-              <span class="item-label">Poción</span>
-              <span class="item-qty">x3</span>
-            </div>
-            <div class="bag-item">
-              <img
-                src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"
-                alt="Pokeball"
-                class="item-sprite"
-              />
-              <span class="item-label">Poké Ball</span>
-              <span class="item-qty">x5</span>
-            </div>
-            <div class="bag-item disabled">
-              <img
-                src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/super-potion.png"
-                alt="Super Potion"
-                class="item-sprite"
-              />
-              <span class="item-label">Superpoción</span>
-              <span class="item-qty">x0</span>
-            </div>
-            <div class="bag-item disabled">
-              <img
-                src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/revive.png"
-                alt="Revive"
-                class="item-sprite"
-              />
-              <span class="item-label">Revivir</span>
-              <span class="item-qty">x0</span>
-            </div>
-          </div>
-          <button class="back-button" @click="handleBack">
-            <span class="back-arrow">←</span> ATRÁS
-          </button>
-        </div>
+        <BagScreen
+          v-else-if="currentView === 'bag'"
+          @use-item="handleUseItem"
+          @back="handleBack"
+        />
 
-        <!-- MyTeam enlazado -->
+        <!-- Vista de Pokémon -->
         <BattleTeamSelector
           v-else-if="currentView === 'pokemon'"
           :team="battleStore.playerTeam"
@@ -610,7 +431,7 @@ watch(() => battleStore.log, () => {
   </div>
 </template>
 
-<style scoped>
+<style>
 .battle-container {
   width: 100vw;
   height: 100vh;
@@ -621,7 +442,6 @@ watch(() => battleStore.log, () => {
   padding: 20px;
 }
 
-/* AGRANDADO: Mayor tamaño */
 .battle-screen {
   width: 720px;
   height: 480px;
@@ -637,447 +457,9 @@ watch(() => battleStore.log, () => {
   font-family: 'Press Start 2P', 'Courier New', monospace;
 }
 
-.battlefield {
-  flex: 1;
+.control-area-wrapper {
+  height: 150px;
   position: relative;
-  background: linear-gradient(
-    to bottom,
-    #87CEEB 0%,
-    #87CEEB 40%,
-    #90EE90 40%,
-    #90EE90 55%,
-    #8B7355 55%,
-    #8B7355 100%
-  );
-  overflow: hidden;
-}
-
-.sprite-platform {
-  position: absolute;
-  border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.enemy-platform {
-  width: 80px;
-  height: 20px;
-  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.2), transparent);
-  top: 42%;
-  right: 22%;
-}
-
-.player-platform {
-  width: 90px;
-  height: 25px;
-  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.25), transparent);
-  bottom: 22%;
-  left: 12%;
-}
-
-.pokemon-sprite {
-  position: absolute;
-  image-rendering: pixelated;
-  animation: float 3s ease-in-out infinite;
-}
-
-.enemy-sprite {
-  width: 150px;
-  height: 150px;
-  top: 15%;
-  right: 15%;
-  animation-delay: 0s;
-}
-
-.player-sprite {
-  width: 180px;
-  height: 180px;
-  bottom: 10%;
-  left: 5%;
-  animation-delay: 1.5s;
-  transform: scaleX(-1);
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
-}
-
-@keyframes damageHit {
-  0% {
-    filter: brightness(1) drop-shadow(0 0 0 rgba(255, 0, 0, 0));
-    transform: translateX(0) rotate(0deg);
-  }
-  25% {
-    filter: brightness(0.7) drop-shadow(0 0 8px rgba(255, 0, 0, 0.8));
-    transform: translateX(-5px) rotate(-2deg);
-  }
-  50% {
-    filter: brightness(0.7) drop-shadow(0 0 8px rgba(255, 0, 0, 0.8));
-    transform: translateX(5px) rotate(2deg);
-  }
-  100% {
-    filter: brightness(1) drop-shadow(0 0 0 rgba(255, 0, 0, 0));
-    transform: translateX(0) rotate(0deg);
-  }
-}
-
-.damage-hit {
-  animation: damageHit 0.3s ease-in-out;
-}
-
-.attack-effect {
-  animation: attackPulse 0.6s ease-out;
-}
-
-.attack-effect-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  pointer-events: none;
-  animation: effectPulse 0.6s ease-out;
-  opacity: 0.3;
-}
-
-@keyframes effectPulse {
-  0% {
-    transform: scale(0.5);
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 0.3;
-  }
-  100% {
-    transform: scale(1.3);
-    opacity: 0;
-  }
-}
-
-@keyframes attackPulse {
-  0% {
-    filter: brightness(1) saturate(1);
-  }
-  25% {
-    filter: brightness(1.3) saturate(1.5);
-  }
-  50% {
-    filter: brightness(1.2) saturate(1.3);
-  }
-  100% {
-    filter: brightness(1) saturate(1);
-  }
-}
-
-.info-box {
-  background: rgba(255, 255, 255, 0.95);
-  border: 2px solid #000;
-  border-radius: 8px;
-  padding: 8px 12px;
-  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
-}
-
-.enemy-info-panel {
-  position: absolute;
-  top: 8%;
-  left: 6%;
-}
-
-.enemy-box {
-  min-width: 180px;
-}
-
-.player-info-panel {
-  position: absolute;
-  bottom: 8%;
-  right: 6%;
-}
-
-.player-box {
-  min-width: 200px;
-}
-
-.name-level-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-bottom: 3px;
-}
-
-.pokemon-name {
-  font-size: 11px;
-  font-weight: bold;
-  color: #2d2d2d;
-  letter-spacing: 0.5px;
-}
-
-.gender-icon {
-  font-size: 13px;
-  font-weight: bold;
-}
-
-.gender-icon.male { color: #3b82f6; }
-.gender-icon.female { color: #ec4899; }
-
-.level-row {
-  font-size: 9px;
-  color: #666;
-  margin-bottom: 5px;
-}
-
-.hp-display {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-bottom: 3px;
-}
-
-.hp-text {
-  font-size: 8px;
-  color: #f59e0b;
-  font-weight: bold;
-}
-
-.hp-bar-outer {
-  flex: 1;
-  height: 7px;
-  background: #2d2d2d;
-  border-radius: 3px;
-  border: 1px solid #000;
-  overflow: hidden;
-}
-
-.hp-bar-inner {
-  height: 100%;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 2px;
-}
-
-.hp-numbers {
-  font-size: 10px;
-  color: #2d2d2d;
-  text-align: right;
-  margin-top: 2px;
-}
-
-.team-indicator {
-  font-size: 8px;
-  color: #666;
-  margin-top: 3px;
-  padding-top: 3px;
-  border-top: 1px solid #ddd;
-  text-align: center;
-  font-weight: bold;
-}
-
-.exp-display {
-  margin-top: 4px;
-}
-
-.exp-bar-outer {
-  width: 100%;
-  height: 5px;
-  background: #2d2d2d;
-  border-radius: 2px;
-  border: 1px solid #000;
-  overflow: hidden;
-}
-
-.exp-bar-inner {
-  height: 100%;
-  background: linear-gradient(to right, #3b82f6, #60a5fa);
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.status-overlay {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* AGRANDADO: Más altura para el panel */
-.control-area {
-  height: 150px;
-  background: oklch(var(--color-muted));
-  border-top: 3px solid oklch(var(--color-border));
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px;
-  overflow-y: auto;
-}
-
-.action-panel {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.action-btn {
-  background: oklch(var(--color-card));
-  border: 3px solid oklch(var(--color-border));
-  border-radius: 6px;
-  padding: 16px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.1s ease;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.action-btn:hover {
-  background: oklch(var(--color-accent));
-  transform: translate(1px, 1px);
-  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
-}
-
-.action-btn:active {
-  transform: translate(3px, 3px);
-  box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
-}
-
-.action-text {
-  font-size: 10px;
-  font-weight: bold;
-  color: oklch(var(--color-foreground));
-  letter-spacing: 0.5px;
-}
-
-.bag-panel {
-  grid-column: 1 / -1;
-  background: oklch(var(--color-card));
-  border: 3px solid oklch(var(--color-border));
-  border-radius: 6px;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.bag-header {
-  font-size: 11px;
-  font-weight: bold;
-  color: oklch(var(--color-foreground));
-  text-align: center;
-  padding-bottom: 6px;
-  border-bottom: 2px solid oklch(var(--color-border));
-}
-
-.bag-items {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  flex: 1;
-}
-
-.bag-item {
-  background: oklch(var(--color-muted));
-  border: 2px solid oklch(var(--color-border));
-  border-radius: 4px;
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  cursor: pointer;
-  transition: all 0.1s ease;
-}
-
-.bag-item:hover:not(.disabled) {
-  background: oklch(var(--color-accent));
-  transform: scale(1.05);
-}
-
-.bag-item.disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.item-sprite {
-  width: 28px;
-  height: 28px;
-  image-rendering: pixelated;
-}
-
-.item-label {
-  font-size: 7px;
-  text-align: center;
-  color: oklch(var(--color-foreground));
-  line-height: 1.2;
-}
-
-.item-qty {
-  font-size: 6px;
-  color: oklch(var(--color-muted-foreground));
-  font-weight: bold;
-}
-
-.back-button {
-  background: oklch(var(--color-card));
-  border: 2px solid oklch(var(--color-border));
-  border-radius: 4px;
-  padding: 8px 12px;
-  font-size: 9px;
-  font-weight: bold;
-  color: oklch(var(--color-foreground));
-  cursor: pointer;
-  align-self: flex-start;
-  font-family: inherit;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  transition: all 0.1s ease;
-}
-
-.back-button:hover {
-  background: oklch(var(--color-accent));
-}
-
-.back-arrow {
-  font-size: 11px;
-}
-
-/* New Layout Styles */
-.main-layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  height: 100%;
-  padding: 8px;
-}
-
-.log-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-}
-
-.move-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-}
-
-.fight-layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  height: 100%;
-  padding: 8px;
-}
-
-@media (max-width: 800px) {
-  .main-layout,
-  .fight-layout {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
 }
 
 @media (max-width: 800px) {
@@ -1094,7 +476,7 @@ watch(() => battleStore.log, () => {
     height: 640px;
   }
 
-  .control-area {
+  .control-area-wrapper {
     height: 200px;
   }
 }
